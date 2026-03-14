@@ -18,6 +18,7 @@ function loadPageData(page) {
     case 'dashboard': loadDashboard(); break;
     case 'config': loadConfig(); break;
     case 'contacts': loadContacts(); break;
+    case 'templates': loadLocalTemplates(); break;
     case 'campaigns': loadCampaigns(); loadTemplatesSelect(); loadContactsCheckboxes(); break;
     case 'messages': loadMessages(); break;
   }
@@ -103,6 +104,26 @@ async function loadConfig() {
   document.getElementById('cfg-phone-id').value = config.phone_number_id || '';
   document.getElementById('cfg-business-id').value = config.business_account_id || '';
   document.getElementById('cfg-webhook-token').value = config.webhook_verify_token || '';
+
+  // Afficher la vraie URL du webhook
+  const webhookUrl = `${window.location.origin}/webhook`;
+  document.getElementById('webhook-url').textContent = webhookUrl;
+}
+
+function copyWebhookUrl() {
+  const url = `${window.location.origin}/webhook`;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('URL copi\u00e9e !');
+  }).catch(() => {
+    // Fallback
+    const input = document.createElement('input');
+    input.value = url;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+    toast('URL copi\u00e9e !');
+  });
 }
 
 document.getElementById('config-form').addEventListener('submit', async (e) => {
@@ -228,6 +249,10 @@ function sendToContact(phone) {
 // ============================================
 document.getElementById('send-text-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const btn = document.getElementById('btn-send-text');
+  btn.disabled = true;
+  btn.textContent = 'Envoi en cours...';
+
   const result = await api('/send/text', {
     method: 'POST',
     body: {
@@ -241,10 +266,16 @@ document.getElementById('send-text-form').addEventListener('submit', async (e) =
   } else {
     toast(result.error || 'Erreur', 'error');
   }
+  btn.disabled = false;
+  btn.textContent = 'Envoyer';
 });
 
 document.getElementById('send-template-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const btn = document.getElementById('btn-send-template');
+  btn.disabled = true;
+  btn.textContent = 'Envoi en cours...';
+
   const varsText = document.getElementById('tpl-vars').value.trim();
   const variables = varsText ? varsText.split('\n').map(v => v.trim()).filter(Boolean) : [];
 
@@ -262,6 +293,8 @@ document.getElementById('send-template-form').addEventListener('submit', async (
   } else {
     toast(result.error || 'Erreur', 'error');
   }
+  btn.disabled = false;
+  btn.textContent = 'Envoyer le template';
 });
 
 // ============================================
@@ -351,11 +384,12 @@ document.getElementById('create-campaign-form').addEventListener('submit', async
 });
 
 async function launchCampaign(id) {
-  if (!confirm('Lancer cette campagne ? Les messages seront envoy\u00e9s imm\u00e9diatement.')) return;
+  if (!confirm('Lancer cette campagne ?\n\nLes messages seront envoy\u00e9s imm\u00e9diatement \u00e0 tous les contacts s\u00e9lectionn\u00e9s.\n\nCette action est irr\u00e9versible.')) return;
+  toast('Lancement de la campagne...', 'info');
   const result = await api('/campaigns/send', { method: 'POST', body: { campaign_id: id } });
   if (result.success) {
     toast(result.message);
-    setTimeout(() => loadCampaigns(), 2000);
+    setTimeout(() => loadCampaigns(), 3000);
   } else {
     toast(result.error || 'Erreur', 'error');
   }
@@ -393,6 +427,139 @@ async function loadMessages(phone = '') {
 
 document.getElementById('filter-messages-phone').addEventListener('input', (e) => {
   loadMessages(e.target.value);
+});
+
+// ============================================
+// TEMPLATES
+// ============================================
+async function syncMetaTemplates() {
+  const btn = document.getElementById('btn-sync-meta');
+  const statusEl = document.getElementById('meta-templates-status');
+  btn.disabled = true;
+  btn.textContent = 'Synchronisation...';
+  statusEl.innerHTML = '<div class="connection-status disconnected"><span class="connection-dot"></span> Chargement des templates depuis Meta...</div>';
+
+  try {
+    const templates = await api('/templates/meta');
+
+    if (templates.error) {
+      statusEl.innerHTML = `<div class="connection-status disconnected"><span class="connection-dot"></span> Erreur: ${templates.error}</div>`;
+      toast(templates.error, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Synchroniser depuis Meta';
+      return;
+    }
+
+    const tbody = document.getElementById('meta-templates-list');
+    tbody.innerHTML = templates.map(t => {
+      const bodyComp = (t.components || []).find(c => c.type === 'BODY');
+      const preview = bodyComp ? bodyComp.text : '-';
+      const statusClass = t.status === 'APPROVED' ? 'badge-success' : t.status === 'REJECTED' ? 'badge-danger' : 'badge-warning';
+      const vars = bodyComp ? (bodyComp.text.match(/\{\{\d+\}\}/g) || []) : [];
+
+      return `
+        <tr>
+          <td><strong>${t.name}</strong></td>
+          <td><span class="badge ${statusClass}">${t.status}</span></td>
+          <td>${t.category || '-'}</td>
+          <td>${t.language || '-'}</td>
+          <td>${truncate(preview, 60)}</td>
+          <td>
+            ${t.status === 'APPROVED' ? `<button class="btn btn-sm btn-primary" onclick="importMetaTemplate('${t.name}', ${JSON.stringify(preview).replace(/'/g, "\\'")} , ${JSON.stringify(JSON.stringify(vars))})">Importer</button>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (templates.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Aucun template trouv\u00e9 sur Meta</td></tr>';
+    }
+
+    const approved = templates.filter(t => t.status === 'APPROVED').length;
+    statusEl.innerHTML = `<div class="connection-status connected"><span class="connection-dot"></span> ${templates.length} templates trouv\u00e9s dont ${approved} approuv\u00e9s</div>`;
+    toast(`${templates.length} templates r\u00e9cup\u00e9r\u00e9s depuis Meta`);
+  } catch (err) {
+    statusEl.innerHTML = `<div class="connection-status disconnected"><span class="connection-dot"></span> Erreur de connexion \u00e0 Meta</div>`;
+    toast('Erreur lors de la synchronisation', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Synchroniser depuis Meta';
+}
+
+async function importMetaTemplate(name, content, varsJson) {
+  const variables = JSON.parse(varsJson || '[]');
+  const result = await api('/templates/import-meta', {
+    method: 'POST',
+    body: { name, content, variables }
+  });
+
+  if (result.success) {
+    toast(`Template "${name}" import\u00e9 !`);
+    loadLocalTemplates();
+  } else {
+    toast(result.error || 'Erreur', 'error');
+  }
+}
+
+async function loadLocalTemplates() {
+  const templates = await api('/templates');
+  const tbody = document.getElementById('local-templates-list');
+  tbody.innerHTML = templates.map(t => `
+    <tr>
+      <td><strong>${t.name}</strong></td>
+      <td>${truncate(t.content, 60)}</td>
+      <td>${t.variables || '[]'}</td>
+      <td>${formatDate(t.created_at)}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteTemplate(${t.id})">Suppr.</button>
+      </td>
+    </tr>
+  `).join('');
+
+  if (templates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">Aucun template local. Synchronisez depuis Meta ou ajoutez-en manuellement.</td></tr>';
+  }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('Supprimer ce template ?')) return;
+  await api(`/templates/${id}`, { method: 'DELETE' });
+  toast('Template supprim\u00e9');
+  loadLocalTemplates();
+}
+
+document.getElementById('add-template-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  let variables = [];
+  const varsInput = document.getElementById('tpl-add-vars').value.trim();
+  if (varsInput) {
+    try {
+      variables = JSON.parse(varsInput);
+    } catch {
+      toast('Format JSON invalide pour les variables', 'error');
+      return;
+    }
+  }
+
+  const result = await api('/templates', {
+    method: 'POST',
+    body: {
+      name: document.getElementById('tpl-add-name').value,
+      content: document.getElementById('tpl-add-content').value,
+      variables
+    }
+  });
+
+  if (result.success) {
+    toast('Template ajout\u00e9 !');
+    document.getElementById('tpl-add-name').value = '';
+    document.getElementById('tpl-add-content').value = '';
+    document.getElementById('tpl-add-vars').value = '';
+    loadLocalTemplates();
+  } else {
+    toast(result.error || 'Erreur', 'error');
+  }
 });
 
 // ============================================

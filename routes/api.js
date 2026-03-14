@@ -409,7 +409,7 @@ router.delete('/campaigns/:id', async (req, res) => {
 });
 
 // ============================================
-// TEMPLATES LOCAUX
+// TEMPLATES
 // ============================================
 
 router.get('/templates', async (req, res) => {
@@ -440,6 +440,58 @@ router.delete('/templates/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Récupérer les templates approuvés depuis Meta
+router.get('/templates/meta', async (req, res) => {
+  try {
+    const { token, phoneId } = await getMetaCredentials();
+    const wabaId = await getConfig('business_account_id') || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+
+    if (!token || !wabaId) {
+      return res.status(400).json({ error: 'Configuration Meta manquante (token ou Business Account ID)' });
+    }
+
+    const response = await axios.get(
+      `https://graph.facebook.com/v21.0/${wabaId}/message_templates`,
+      {
+        params: { limit: 100 },
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    const templates = (response.data.data || []).map(t => ({
+      name: t.name,
+      status: t.status,
+      category: t.category,
+      language: t.language,
+      components: t.components,
+      id: t.id
+    }));
+
+    res.json(templates);
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(400).json({ error: msg });
+  }
+});
+
+// Importer un template Meta dans la DB locale
+router.post('/templates/import-meta', async (req, res) => {
+  try {
+    const { name, content, variables, language } = req.body;
+
+    await pool.query(
+      `INSERT INTO templates (name, content, variables)
+       VALUES ($1, $2, $3)
+       ON CONFLICT(name) DO UPDATE SET content = $2, variables = $3`,
+      [name, content || '', JSON.stringify(variables || [])]
+    );
+
+    res.json({ success: true, message: `Template "${name}" importé` });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

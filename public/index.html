@@ -33,6 +33,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span>Envoyer</span>
       </div>
+      <div class="nav-item" data-page="templates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Templates</span>
+      </div>
       <div class="nav-item" data-page="campaigns">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <span>Campagnes</span>
@@ -136,9 +140,11 @@
           <div class="card-title">Configuration du Webhook</div>
           <div class="info-box">
             <strong>URL du Webhook &agrave; renseigner dans Meta :</strong>
-            <p style="margin-top:8px;font-size:16px;"><code id="webhook-url">https://VOTRE_DOMAINE/webhook</code></p>
-            <p style="margin-top:8px;">Pour exposer votre serveur local, utilisez <code>ngrok http 3000</code> puis copiez l'URL HTTPS g&eacute;n&eacute;r&eacute;e.</p>
-            <p style="margin-top:4px;">Champs &agrave; s'abonner : <code>messages</code></p>
+            <p style="margin-top:8px;font-size:16px;"><code id="webhook-url"></code>
+              <button class="btn btn-sm btn-secondary" onclick="copyWebhookUrl()" style="margin-left:8px;padding:4px 10px;font-size:12px;">Copier</button>
+            </p>
+            <p style="margin-top:12px;"><strong>Champs &agrave; s'abonner :</strong> <code>messages</code></p>
+            <p style="margin-top:4px;"><strong>Token de v&eacute;rification :</strong> celui que vous avez saisi ci-dessus dans "Token de v&eacute;rification Webhook"</p>
           </div>
         </div>
       </div>
@@ -197,14 +203,15 @@
           </div>
           <form id="send-text-form">
             <div class="form-group">
-              <label>Num&eacute;ro de t&eacute;l&eacute;phone</label>
+              <label>Num&eacute;ro de t&eacute;l&eacute;phone *</label>
               <input type="text" id="send-phone" placeholder="33612345678" required>
+              <small>Format international sans le +. Ex: 33612345678 pour la France.</small>
             </div>
             <div class="form-group">
-              <label>Message</label>
+              <label>Message *</label>
               <textarea id="send-message" placeholder="Votre message..." required></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">Envoyer</button>
+            <button type="submit" class="btn btn-primary" id="btn-send-text">Envoyer</button>
           </form>
         </div>
 
@@ -233,7 +240,64 @@
               <textarea id="tpl-vars" placeholder="Variable 1&#10;Variable 2"></textarea>
               <small>Laissez vide si le template n'a pas de variables.</small>
             </div>
-            <button type="submit" class="btn btn-primary">Envoyer le template</button>
+            <button type="submit" class="btn btn-primary" id="btn-send-template">Envoyer le template</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- TEMPLATES -->
+      <div id="page-templates" class="page">
+        <h2 class="page-title">Templates WhatsApp</h2>
+
+        <div class="info-box">
+          <strong>Comment fonctionnent les templates ?</strong>
+          <p>Les templates sont des messages pr&eacute;-approuv&eacute;s par Meta. Vous devez les cr&eacute;er et faire approuver sur <code>business.facebook.com</code> avant de pouvoir les utiliser pour contacter des prospects.</p>
+          <p style="margin-top:6px;">Cliquez sur <strong>"Synchroniser depuis Meta"</strong> pour importer automatiquement vos templates approuv&eacute;s.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Templates disponibles</span>
+            <button class="btn btn-primary btn-sm" onclick="syncMetaTemplates()" id="btn-sync-meta">Synchroniser depuis Meta</button>
+          </div>
+          <div id="meta-templates-status"></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Nom</th><th>Statut</th><th>Cat&eacute;gorie</th><th>Langue</th><th>Aper&ccedil;u</th><th>Actions</th></tr></thead>
+              <tbody id="meta-templates-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Templates locaux (dans votre bot)</div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Nom</th><th>Contenu</th><th>Variables</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="local-templates-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Ajouter un template manuellement</div>
+          <form id="add-template-form">
+            <div class="form-group">
+              <label>Nom du template (identique &agrave; celui de Meta) *</label>
+              <input type="text" id="tpl-add-name" placeholder="hello_world" required>
+              <small>Doit correspondre exactement au nom du template approuv&eacute; dans Meta.</small>
+            </div>
+            <div class="form-group">
+              <label>Contenu / Description</label>
+              <textarea id="tpl-add-content" placeholder="Bonjour {{1}}, bienvenue chez nous !"></textarea>
+              <small>Texte du template pour r&eacute;f&eacute;rence (optionnel).</small>
+            </div>
+            <div class="form-group">
+              <label>Variables (format JSON)</label>
+              <input type="text" id="tpl-add-vars" placeholder='["{{name}}", "{{phone}}"]'>
+              <small>Liste des variables au format JSON. Ex: ["{{name}}"] ou laissez vide.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Ajouter le template</button>
           </form>
         </div>
       </div>
@@ -242,23 +306,34 @@
       <div id="page-campaigns" class="page">
         <h2 class="page-title">Campagnes</h2>
 
+        <div class="info-box">
+          <strong>Comment lancer une campagne ?</strong>
+          <ol>
+            <li>Assurez-vous d'avoir des <strong>templates approuv&eacute;s</strong> (onglet Templates &gt; Synchroniser depuis Meta)</li>
+            <li>Ajoutez vos <strong>contacts</strong> (onglet Contacts)</li>
+            <li>Cr&eacute;ez la campagne ci-dessous en s&eacute;lectionnant un template et les contacts</li>
+            <li>Cliquez sur <strong>"Lancer"</strong> pour envoyer les messages</li>
+          </ol>
+          <p style="margin-top:6px;"><strong>Note :</strong> Seuls les templates approuv&eacute;s par Meta peuvent &ecirc;tre utilis&eacute;s pour contacter des prospects en dehors de la fen&ecirc;tre de 24h.</p>
+        </div>
+
         <div class="card">
           <div class="card-title">Cr&eacute;er une campagne</div>
           <form id="create-campaign-form">
             <div class="form-group">
-              <label>Nom de la campagne</label>
+              <label>Nom de la campagne *</label>
               <input type="text" id="camp-name" placeholder="Campagne Mars 2026" required>
             </div>
             <div class="form-group">
-              <label>Template</label>
-              <select id="camp-template"></select>
-              <small>Cr&eacute;ez d'abord un template local ou utilisez un nom de template Meta.</small>
+              <label>Template *</label>
+              <select id="camp-template" required></select>
+              <small>S&eacute;lectionnez un template import&eacute; depuis l'onglet Templates. <a href="#" onclick="navigateTo('templates');return false;" style="color:var(--primary);">G&eacute;rer les templates</a></small>
             </div>
             <div class="form-group">
-              <label>S&eacute;lectionner les contacts</label>
+              <label>S&eacute;lectionner les contacts *</label>
               <div id="camp-contacts" class="contact-check-list"></div>
             </div>
-            <button type="submit" class="btn btn-primary">Cr&eacute;er la campagne</button>
+            <button type="submit" class="btn btn-primary" id="btn-create-campaign">Cr&eacute;er la campagne</button>
           </form>
         </div>
 
