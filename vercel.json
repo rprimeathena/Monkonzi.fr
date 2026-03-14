@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm install",
+  "framework": "express",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/server.js"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "META_ACCESS_TOKEN": "@meta_access_token",
+    "WHATSAPP_PHONE_NUMBER_ID": "@whatsapp_phone_number_id",
+    "WHATSAPP_BUSINESS_ACCOUNT_ID": "@whatsapp_business_account_id",
+    "WEBHOOK_VERIFY_TOKEN": "@webhook_verify_token"
+  }
+}

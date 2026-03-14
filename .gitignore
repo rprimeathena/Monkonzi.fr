@@ -12,6 +12,20 @@ dist
 dist-ssr
 *.local
 
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database (local SQLite)
+db/
+*.db
+*.db-wal
+*.db-shm
+
+# Uploads
+uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +36,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# IDE
+.claude/

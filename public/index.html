@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WA Prospect - Bot WhatsApp</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h1>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          <span>WA Prospect</span>
+        </h1>
+      </div>
+
+      <div class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <span>Configuration Meta</span>
+      </div>
+      <div class="nav-item" data-page="contacts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Contacts</span>
+      </div>
+      <div class="nav-item" data-page="send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <span>Envoyer</span>
+      </div>
+      <div class="nav-item" data-page="campaigns">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Campagnes</span>
+      </div>
+      <div class="nav-item" data-page="messages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Messages</span>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="main">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <h2 class="page-title">Dashboard</h2>
+        <div id="connection-banner"></div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-contacts">0</div>
+            <div class="stat-label">Contacts</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-sent">0</div>
+            <div class="stat-label">Messages envoy&eacute;s</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-received">0</div>
+            <div class="stat-label">Messages re&ccedil;us</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-campaigns">0</div>
+            <div class="stat-label">Campagnes</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Derniers messages</div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>T&eacute;l&eacute;phone</th><th>Direction</th><th>Contenu</th><th>Statut</th><th>Date</th></tr></thead>
+              <tbody id="recent-messages"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIGURATION META -->
+      <div id="page-config" class="page">
+        <h2 class="page-title">Configuration Meta WhatsApp</h2>
+
+        <div class="info-box">
+          <strong>Comment obtenir ces informations ?</strong>
+          <ol>
+            <li>Allez sur <code>developers.facebook.com</code></li>
+            <li>Cr&eacute;ez ou s&eacute;lectionnez votre application</li>
+            <li>Ajoutez le produit <strong>"WhatsApp"</strong> &agrave; votre app</li>
+            <li>Dans <strong>WhatsApp &gt; Configuration de l'API</strong> vous trouverez :
+              <ul>
+                <li><strong>Token d'acc&egrave;s temporaire</strong> (ou cr&eacute;ez un token permanent via les param&egrave;tres syst&egrave;me)</li>
+                <li><strong>Phone Number ID</strong> (ID du num&eacute;ro)</li>
+                <li><strong>WhatsApp Business Account ID</strong></li>
+              </ul>
+            </li>
+            <li>Pour le <strong>Webhook</strong>, configurez l'URL de callback : <code>https://VOTRE_DOMAINE/webhook</code> avec le token de v&eacute;rification ci-dessous</li>
+          </ol>
+        </div>
+
+        <div id="config-connection-status"></div>
+
+        <div class="card">
+          <div class="card-title">Identifiants Meta</div>
+          <form id="config-form">
+            <div class="form-group">
+              <label>Token d'acc&egrave;s (Access Token)</label>
+              <input type="password" id="cfg-token" placeholder="EAAxxxxxxx...">
+              <small>Token permanent recommand&eacute; pour la production. Le token temporaire expire au bout d'une heure.</small>
+            </div>
+            <div class="form-group">
+              <label>Phone Number ID</label>
+              <input type="text" id="cfg-phone-id" placeholder="Ex: 123456789012345">
+              <small>Identifiant du num&eacute;ro de t&eacute;l&eacute;phone WhatsApp Business.</small>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Business Account ID</label>
+              <input type="text" id="cfg-business-id" placeholder="Ex: 123456789012345">
+              <small>ID du compte WhatsApp Business (WABA).</small>
+            </div>
+            <div class="form-group">
+              <label>Token de v&eacute;rification Webhook</label>
+              <input type="text" id="cfg-webhook-token" placeholder="mon_token_secret_123">
+              <small>Cha&icirc;ne secr&egrave;te que vous d&eacute;finirez aussi dans la config webhook Meta.</small>
+            </div>
+            <div class="btn-group">
+              <button type="submit" class="btn btn-primary">Sauvegarder</button>
+              <button type="button" class="btn btn-secondary" onclick="testConnection()">Tester la connexion</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Configuration du Webhook</div>
+          <div class="info-box">
+            <strong>URL du Webhook &agrave; renseigner dans Meta :</strong>
+            <p style="margin-top:8px;font-size:16px;"><code id="webhook-url">https://VOTRE_DOMAINE/webhook</code></p>
+            <p style="margin-top:8px;">Pour exposer votre serveur local, utilisez <code>ngrok http 3000</code> puis copiez l'URL HTTPS g&eacute;n&eacute;r&eacute;e.</p>
+            <p style="margin-top:4px;">Champs &agrave; s'abonner : <code>messages</code></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTACTS -->
+      <div id="page-contacts" class="page">
+        <h2 class="page-title">Contacts</h2>
+
+        <div class="card">
+          <div class="card-title">Ajouter un contact</div>
+          <form id="add-contact-form" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label>T&eacute;l&eacute;phone (format international)</label>
+              <input type="text" id="contact-phone" placeholder="33612345678" required>
+            </div>
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label>Nom</label>
+              <input type="text" id="contact-name" placeholder="Jean Dupont">
+            </div>
+            <div class="form-group" style="flex:1;min-width:150px;">
+              <label>Tags</label>
+              <input type="text" id="contact-tags" placeholder="client, vip">
+            </div>
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Liste des contacts</span>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="search-contacts" placeholder="Rechercher..." style="padding:8px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+              <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                Importer CSV
+                <input type="file" id="import-csv" accept=".csv" style="display:none;">
+              </label>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>T&eacute;l&eacute;phone</th><th>Nom</th><th>Tags</th><th>Ajout&eacute; le</th><th>Actions</th></tr></thead>
+              <tbody id="contacts-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENVOYER -->
+      <div id="page-send" class="page">
+        <h2 class="page-title">Envoyer un message</h2>
+
+        <div class="card">
+          <div class="card-title">Message texte libre</div>
+          <div class="info-box">
+            <strong>Important :</strong> Les messages textes libres ne peuvent &ecirc;tre envoy&eacute;s qu'aux contacts qui vous ont &eacute;crit dans les derni&egrave;res 24h (fen&ecirc;tre de conversation). Pour contacter un nouveau prospect, utilisez un <strong>Template approuv&eacute;</strong>.
+          </div>
+          <form id="send-text-form">
+            <div class="form-group">
+              <label>Num&eacute;ro de t&eacute;l&eacute;phone</label>
+              <input type="text" id="send-phone" placeholder="33612345678" required>
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea id="send-message" placeholder="Votre message..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Envoyer</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Envoyer un Template</div>
+          <form id="send-template-form">
+            <div class="form-group">
+              <label>Num&eacute;ro de t&eacute;l&eacute;phone</label>
+              <input type="text" id="tpl-phone" placeholder="33612345678" required>
+            </div>
+            <div class="form-group">
+              <label>Nom du template (tel qu'approuv&eacute; dans Meta)</label>
+              <input type="text" id="tpl-name" placeholder="hello_world" required>
+            </div>
+            <div class="form-group">
+              <label>Langue</label>
+              <select id="tpl-lang">
+                <option value="fr">Fran&ccedil;ais (fr)</option>
+                <option value="en">English (en)</option>
+                <option value="en_US">English US (en_US)</option>
+                <option value="es">Espa&ntilde;ol (es)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Variables (une par ligne, dans l'ordre)</label>
+              <textarea id="tpl-vars" placeholder="Variable 1&#10;Variable 2"></textarea>
+              <small>Laissez vide si le template n'a pas de variables.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Envoyer le template</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- CAMPAGNES -->
+      <div id="page-campaigns" class="page">
+        <h2 class="page-title">Campagnes</h2>
+
+        <div class="card">
+          <div class="card-title">Cr&eacute;er une campagne</div>
+          <form id="create-campaign-form">
+            <div class="form-group">
+              <label>Nom de la campagne</label>
+              <input type="text" id="camp-name" placeholder="Campagne Mars 2026" required>
+            </div>
+            <div class="form-group">
+              <label>Template</label>
+              <select id="camp-template"></select>
+              <small>Cr&eacute;ez d'abord un template local ou utilisez un nom de template Meta.</small>
+            </div>
+            <div class="form-group">
+              <label>S&eacute;lectionner les contacts</label>
+              <div id="camp-contacts" class="contact-check-list"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">Cr&eacute;er la campagne</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Campagnes existantes</div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Nom</th><th>Template</th><th>Contacts</th><th>Envoy&eacute;s</th><th>D&eacute;livr&eacute;s</th><th>Lus</th><th>&Eacute;checs</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody id="campaigns-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MESSAGES -->
+      <div id="page-messages" class="page">
+        <h2 class="page-title">Historique des messages</h2>
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Messages</span>
+            <input type="text" id="filter-messages-phone" placeholder="Filtrer par num&eacute;ro..." style="padding:8px 12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>T&eacute;l&eacute;phone</th><th>Direction</th><th>Contenu</th><th>Template</th><th>Statut</th><th>Date</th></tr></thead>
+              <tbody id="messages-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
