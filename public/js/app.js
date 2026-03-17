@@ -18,8 +18,9 @@ function loadPageData(page) {
     case 'dashboard': loadDashboard(); break;
     case 'config': loadConfig(); break;
     case 'contacts': loadContacts(); break;
+    case 'pools': loadPools(); break;
     case 'templates': loadLocalTemplates(); break;
-    case 'campaigns': loadCampaigns(); loadTemplatesSelect(); loadContactsCheckboxes(); break;
+    case 'campaigns': loadCampaigns(); loadTemplatesSelect(); loadPoolsSelect(); break;
     case 'messages': loadMessages(); break;
   }
 }
@@ -61,6 +62,7 @@ async function loadDashboard() {
   document.getElementById('stat-contacts').textContent = stats.totalContacts;
   document.getElementById('stat-sent').textContent = stats.totalMessages;
   document.getElementById('stat-received').textContent = stats.totalReceived;
+  document.getElementById('stat-pools').textContent = stats.totalPools || 0;
   document.getElementById('stat-campaigns').textContent = stats.totalCampaigns;
 
   const tbody = document.getElementById('recent-messages');
@@ -257,6 +259,150 @@ function sendToContact(phone) {
 }
 
 // ============================================
+// POOLS
+// ============================================
+let currentPoolId = null;
+
+async function loadPools() {
+  const pools = await api('/pools');
+  const tbody = document.getElementById('pools-list');
+  tbody.innerHTML = pools.map(p => {
+    const pct = p.total_contacts > 0 ? Math.round((p.contacted_count / p.total_contacts) * 100) : 0;
+    return `
+    <tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.description || '-'}</td>
+      <td>${p.total_contacts}</td>
+      <td>${p.contacted_count}</td>
+      <td><span class="badge badge-success">${p.available_count}</span></td>
+      <td>${formatDate(p.created_at)}</td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="openPoolDetail(${p.id}, '${p.name.replace(/'/g, "\\'")}')">Voir</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePool(${p.id})">Suppr.</button>
+      </td>
+    </tr>
+  `;
+  }).join('');
+
+  if (pools.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px;">Aucun pool. Cr\u00e9ez-en un pour commencer.</td></tr>';
+  }
+}
+
+document.getElementById('create-pool-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const result = await api('/pools', {
+    method: 'POST',
+    body: {
+      name: document.getElementById('pool-name').value,
+      description: document.getElementById('pool-description').value
+    }
+  });
+  if (result.success) {
+    toast('Pool cr\u00e9\u00e9 !');
+    document.getElementById('pool-name').value = '';
+    document.getElementById('pool-description').value = '';
+    loadPools();
+  } else {
+    toast(result.error || 'Erreur', 'error');
+  }
+});
+
+async function deletePool(id) {
+  if (!confirm('Supprimer ce pool ? Les contacts ne seront pas supprim\u00e9s, seulement le pool.')) return;
+  await api(`/pools/${id}`, { method: 'DELETE' });
+  toast('Pool supprim\u00e9');
+  closePoolDetail();
+  loadPools();
+}
+
+async function openPoolDetail(poolId, poolName) {
+  currentPoolId = poolId;
+  document.getElementById('pool-detail').style.display = 'block';
+  document.getElementById('pool-detail-title').textContent = `Contacts du pool : ${poolName}`;
+  await loadPoolContacts(poolId);
+
+  // Scroll vers le d\u00e9tail
+  document.getElementById('pool-detail').scrollIntoView({ behavior: 'smooth' });
+}
+
+function closePoolDetail() {
+  document.getElementById('pool-detail').style.display = 'none';
+  currentPoolId = null;
+}
+
+async function loadPoolContacts(poolId) {
+  const contacts = await api(`/pools/${poolId}/contacts`);
+  const tbody = document.getElementById('pool-contacts-list');
+
+  const total = contacts.length;
+  const contacted = contacts.filter(c => c.contacted).length;
+  const available = total - contacted;
+
+  document.getElementById('pool-detail-stats').innerHTML = `
+    <div class="badge badge-info" style="padding:8px 14px;font-size:14px;">${total} total</div>
+    <div class="badge badge-warning" style="padding:8px 14px;font-size:14px;">${contacted} contact\u00e9(s)</div>
+    <div class="badge badge-success" style="padding:8px 14px;font-size:14px;">${available} disponible(s)</div>
+  `;
+
+  tbody.innerHTML = contacts.map(c => `
+    <tr>
+      <td>${c.phone}</td>
+      <td>${c.name || '-'}</td>
+      <td>${c.tags || '-'}</td>
+      <td>
+        ${c.contacted
+          ? `<span class="badge badge-warning">Contact\u00e9</span> <small style="color:var(--text-muted)">${c.campaign_names || ''}</small>`
+          : '<span class="badge badge-success">Disponible</span>'
+        }
+      </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="removeFromPool(${currentPoolId}, ${c.id})">Retirer</button>
+      </td>
+    </tr>
+  `).join('');
+
+  if (contacts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;">Aucun contact dans ce pool. Importez un CSV.</td></tr>';
+  }
+}
+
+async function removeFromPool(poolId, contactId) {
+  if (!confirm('Retirer ce contact du pool ?')) return;
+  await api(`/pools/${poolId}/contacts/${contactId}`, { method: 'DELETE' });
+  toast('Contact retir\u00e9 du pool');
+  loadPoolContacts(poolId);
+  loadPools();
+}
+
+async function clearPool() {
+  if (!currentPoolId) return;
+  if (!confirm('Vider ce pool ? Tous les contacts seront retir\u00e9s du pool (pas supprim\u00e9s).')) return;
+  const result = await api(`/pools/${currentPoolId}/contacts`, { method: 'DELETE' });
+  if (result.success) {
+    toast(`${result.removed} contact(s) retir\u00e9(s) du pool`);
+    loadPoolContacts(currentPoolId);
+    loadPools();
+  }
+}
+
+document.getElementById('pool-import-csv').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file || !currentPoolId) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  const result = await apiForm(`/pools/${currentPoolId}/import`, formData);
+  if (result.success) {
+    toast(`${result.imported} contacts import\u00e9s dans le pool`);
+    loadPoolContacts(currentPoolId);
+    loadPools();
+  } else {
+    toast(result.error || 'Erreur', 'error');
+  }
+  e.target.value = '';
+});
+
+// ============================================
 // ENVOI DE MESSAGES
 // ============================================
 document.getElementById('send-text-form').addEventListener('submit', async (e) => {
@@ -319,28 +465,107 @@ async function loadTemplatesSelect() {
     templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 }
 
-async function loadContactsCheckboxes() {
-  const contacts = await api('/contacts');
+async function loadPoolsSelect() {
+  const pools = await api('/pools');
+  const select = document.getElementById('camp-pool');
+  select.innerHTML = '<option value="">-- S\u00e9lectionner --</option><option value="all">Tous les contacts</option>' +
+    pools.map(p => `<option value="${p.id}">${p.name} (${p.available_count} dispo / ${p.total_contacts} total)</option>`).join('');
+  // Reset contacts section
+  document.getElementById('camp-contacts-section').style.display = 'none';
+  document.getElementById('camp-contacts').innerHTML = '';
+}
+
+async function loadPoolContactsForCampaign(poolValue) {
+  const section = document.getElementById('camp-contacts-section');
   const container = document.getElementById('camp-contacts');
-  if (contacts.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-muted);padding:12px;">Aucun contact. Ajoutez des contacts d\'abord.</p>';
+
+  if (!poolValue) {
+    section.style.display = 'none';
+    container.innerHTML = '';
     return;
   }
+
+  section.style.display = 'block';
+  let contacts;
+
+  if (poolValue === 'all') {
+    contacts = await api('/contacts');
+    contacts = contacts.map(c => ({ ...c, contacted: false }));
+  } else {
+    contacts = await api(`/pools/${poolValue}/contacts`);
+  }
+
+  if (contacts.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);padding:12px;">Aucun contact dans cette source.</p>';
+    updateSelectionCount();
+    return;
+  }
+
   container.innerHTML = `
     <div class="contact-check-item" style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;">
       <input type="checkbox" id="select-all-contacts" onchange="toggleAllContacts(this)">
       <label for="select-all-contacts" style="cursor:pointer;color:var(--primary);font-weight:600;">Tout s\u00e9lectionner</label>
     </div>
   ` + contacts.map(c => `
-    <div class="contact-check-item">
-      <input type="checkbox" class="contact-cb" value="${c.id}" id="cc-${c.id}">
-      <label for="cc-${c.id}" style="cursor:pointer;">${c.phone} ${c.name ? '- ' + c.name : ''}</label>
+    <div class="contact-check-item" data-contacted="${c.contacted ? 'true' : 'false'}">
+      <input type="checkbox" class="contact-cb" value="${c.id}" id="cc-${c.id}" onchange="updateSelectionCount()">
+      <label for="cc-${c.id}" style="cursor:pointer;">
+        ${c.phone} ${c.name ? '- ' + c.name : ''}
+        ${c.contacted
+          ? ' <span class="badge badge-warning" style="font-size:11px;">Contact\u00e9</span>'
+          : ' <span class="badge badge-success" style="font-size:11px;">Disponible</span>'
+        }
+      </label>
     </div>
   `).join('');
+
+  updateSelectionCount();
 }
 
 function toggleAllContacts(el) {
-  document.querySelectorAll('.contact-cb').forEach(cb => cb.checked = el.checked);
+  document.querySelectorAll('.contact-cb').forEach(cb => { cb.checked = el.checked; });
+  updateSelectionCount();
+}
+
+function selectAvailableContacts() {
+  document.querySelectorAll('.contact-cb').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('.contact-check-item[data-contacted="false"] .contact-cb').forEach(cb => { cb.checked = true; });
+  updateSelectionCount();
+}
+
+function selectRandomContacts() {
+  const n = parseInt(document.getElementById('camp-random-count').value);
+  if (!n || n < 1) { toast('Entrez un nombre valide', 'error'); return; }
+
+  // Get available (not contacted) contacts
+  const available = [...document.querySelectorAll('.contact-check-item[data-contacted="false"] .contact-cb')];
+  if (available.length === 0) { toast('Aucun contact disponible', 'error'); return; }
+
+  // Deselect all first
+  document.querySelectorAll('.contact-cb').forEach(cb => { cb.checked = false; });
+
+  // Shuffle and pick N
+  const shuffled = available.sort(() => Math.random() - 0.5);
+  const toSelect = Math.min(n, shuffled.length);
+  for (let i = 0; i < toSelect; i++) {
+    shuffled[i].checked = true;
+  }
+
+  toast(`${toSelect} contact(s) s\u00e9lectionn\u00e9(s) au hasard`);
+  updateSelectionCount();
+}
+
+function deselectAllCampaignContacts() {
+  document.querySelectorAll('.contact-cb').forEach(cb => { cb.checked = false; });
+  const selectAll = document.getElementById('select-all-contacts');
+  if (selectAll) selectAll.checked = false;
+  updateSelectionCount();
+}
+
+function updateSelectionCount() {
+  const count = document.querySelectorAll('.contact-cb:checked').length;
+  const el = document.getElementById('camp-selection-count');
+  if (el) el.textContent = `${count} s\u00e9lectionn\u00e9(s)`;
 }
 
 async function loadCampaigns() {

@@ -177,6 +177,147 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
 });
 
 // ============================================
+// POOLS
+// ============================================
+
+// Liste des pools avec stats
+router.get('/pools', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*,
+        (SELECT COUNT(*) FROM pool_contacts pc WHERE pc.pool_id = p.id) as total_contacts,
+        (SELECT COUNT(DISTINCT pc.contact_id) FROM pool_contacts pc
+          JOIN campaign_contacts cc ON cc.contact_id = pc.contact_id
+          WHERE pc.pool_id = p.id AND cc.status IN ('sent', 'delivered', 'read')) as contacted_count
+      FROM pools p
+      ORDER BY p.created_at DESC
+    `);
+    res.json(result.rows.map(r => ({
+      ...r,
+      total_contacts: parseInt(r.total_contacts),
+      contacted_count: parseInt(r.contacted_count),
+      available_count: parseInt(r.total_contacts) - parseInt(r.contacted_count)
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Créer un pool
+router.post('/pools', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nom requis' });
+    const result = await pool.query(
+      'INSERT INTO pools (name, description) VALUES ($1, $2) RETURNING id',
+      [name, description || '']
+    );
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Supprimer un pool (et ses liens, pas les contacts)
+router.delete('/pools/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM pool_contacts WHERE pool_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM pools WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Contacts d'un pool avec statut campagne
+router.get('/pools/:id/contacts', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT c.*,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM campaign_contacts cc
+          WHERE cc.contact_id = c.id AND cc.status IN ('sent', 'delivered', 'read')
+        ) THEN true ELSE false END as contacted,
+        (SELECT string_agg(DISTINCT cam.name, ', ')
+         FROM campaign_contacts cc2
+         JOIN campaigns cam ON cam.id = cc2.campaign_id
+         WHERE cc2.contact_id = c.id AND cc2.status IN ('sent', 'delivered', 'read')
+        ) as campaign_names
+      FROM contacts c
+      JOIN pool_contacts pc ON pc.contact_id = c.id
+      WHERE pc.pool_id = $1
+      ORDER BY c.name ASC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Import CSV dans un pool
+router.post('/pools/:id/import', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Fichier requis' });
+  const poolId = req.params.id;
+  let imported = 0;
+  let skipped = 0;
+  const rows = [];
+
+  fs.createReadStream(req.file.path)
+    .pipe(csv({ separator: ';' }))
+    .on('data', (row) => rows.push(row))
+    .on('end', async () => {
+      for (const row of rows) {
+        const phone = (row.phone || row.telephone || row.numero || row.Phone || Object.values(row)[0] || '').replace(/[\s\-\(\)]/g, '');
+        const name = row.name || row.nom || row.Name || Object.values(row)[1] || '';
+        const tags = row.tags || row.tag || '';
+        if (phone) {
+          try {
+            const insertRes = await pool.query(
+              `INSERT INTO contacts (phone, name, tags) VALUES ($1, $2, $3)
+               ON CONFLICT(phone) DO UPDATE SET name = COALESCE(NULLIF($2, ''), contacts.name)
+               RETURNING id`,
+              [phone, name, tags]
+            );
+            const contactId = insertRes.rows[0].id;
+            await pool.query(
+              'INSERT INTO pool_contacts (pool_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [poolId, contactId]
+            );
+            imported++;
+          } catch {
+            skipped++;
+          }
+        }
+      }
+      fs.unlinkSync(req.file.path);
+      res.json({ success: true, imported, skipped });
+    })
+    .on('error', (err) => {
+      res.status(500).json({ error: err.message });
+    });
+});
+
+// Retirer un contact d'un pool
+router.delete('/pools/:poolId/contacts/:contactId', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM pool_contacts WHERE pool_id = $1 AND contact_id = $2', [req.params.poolId, req.params.contactId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Vider un pool
+router.delete('/pools/:id/contacts', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM pool_contacts WHERE pool_id = $1', [req.params.id]);
+    res.json({ success: true, removed: result.rowCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // ENVOI DE MESSAGES
 // ============================================
 
@@ -535,6 +676,7 @@ router.get('/stats', async (req, res) => {
     const totalMessagesRes = await pool.query('SELECT COUNT(*) as count FROM messages WHERE direction = $1', ['sent']);
     const totalReceivedRes = await pool.query('SELECT COUNT(*) as count FROM messages WHERE direction = $1', ['received']);
     const totalCampaignsRes = await pool.query('SELECT COUNT(*) as count FROM campaigns');
+    const totalPoolsRes = await pool.query('SELECT COUNT(*) as count FROM pools');
     const recentMessagesRes = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 10');
 
     res.json({
@@ -542,6 +684,7 @@ router.get('/stats', async (req, res) => {
       totalMessages: parseInt(totalMessagesRes.rows[0].count),
       totalReceived: parseInt(totalReceivedRes.rows[0].count),
       totalCampaigns: parseInt(totalCampaignsRes.rows[0].count),
+      totalPools: parseInt(totalPoolsRes.rows[0].count),
       recentMessages: recentMessagesRes.rows
     });
   } catch (err) {

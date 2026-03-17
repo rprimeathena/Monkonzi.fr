@@ -29,6 +29,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Contacts</span>
       </div>
+      <div class="nav-item" data-page="pools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Pools</span>
+      </div>
       <div class="nav-item" data-page="send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span>Envoyer</span>
@@ -66,6 +70,10 @@
           <div class="stat-card">
             <div class="stat-value" id="stat-received">0</div>
             <div class="stat-label">Messages re&ccedil;us</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-pools">0</div>
+            <div class="stat-label">Pools</div>
           </div>
           <div class="stat-card">
             <div class="stat-value" id="stat-campaigns">0</div>
@@ -188,6 +196,86 @@
             <table>
               <thead><tr><th>T&eacute;l&eacute;phone</th><th>Nom</th><th>Tags</th><th>Ajout&eacute; le</th><th>Actions</th></tr></thead>
               <tbody id="contacts-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- POOLS -->
+      <div id="page-pools" class="page">
+        <h2 class="page-title">Pools de contacts</h2>
+
+        <div class="info-box">
+          <strong>Comment fonctionnent les Pools ?</strong>
+          <p>Un pool est une liste de contacts import&eacute;e depuis un fichier CSV. Vous pouvez ensuite piocher dans vos pools pour cr&eacute;er des campagnes cibl&eacute;es, sans recontacter les m&ecirc;mes personnes.</p>
+          <ol>
+            <li><strong>Cr&eacute;ez un pool</strong> et donnez-lui un nom (ex: "Restaurants Paris")</li>
+            <li><strong>Importez un CSV</strong> dans ce pool</li>
+            <li><strong>Cr&eacute;ez des campagnes</strong> en piochant dans vos pools (20 pour l'offre A, 50 pour l'offre B...)</li>
+            <li>Les contacts d&eacute;j&agrave; contact&eacute;s sont marqu&eacute;s pour &eacute;viter les doublons</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Cr&eacute;er un nouveau pool</div>
+          <form id="create-pool-form" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:2;min-width:200px;">
+              <label>Nom du pool *</label>
+              <input type="text" id="pool-name" placeholder="Ex: Restaurants Paris" required>
+            </div>
+            <div class="form-group" style="flex:3;min-width:200px;">
+              <label>Description</label>
+              <input type="text" id="pool-description" placeholder="Liste de restaurants &agrave; prospecter">
+            </div>
+            <button type="submit" class="btn btn-primary">Cr&eacute;er</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Vos pools</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Description</th>
+                  <th>Total</th>
+                  <th>Contact&eacute;s</th>
+                  <th>Disponibles</th>
+                  <th>Cr&eacute;&eacute; le</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pools-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="pool-detail" style="display:none;">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span id="pool-detail-title">Contacts du pool</span>
+            <div style="display:flex;gap:8px;">
+              <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+                Importer CSV
+                <input type="file" id="pool-import-csv" accept=".csv" style="display:none;">
+              </label>
+              <button class="btn btn-sm" style="background:#e74c3c;color:#fff;border:none;cursor:pointer;" onclick="clearPool()">Vider le pool</button>
+              <button class="btn btn-secondary btn-sm" onclick="closePoolDetail()">Fermer</button>
+            </div>
+          </div>
+          <div id="pool-detail-stats" style="display:flex;gap:16px;margin-bottom:16px;"></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>T&eacute;l&eacute;phone</th>
+                  <th>Nom</th>
+                  <th>Tags</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pool-contacts-list"></tbody>
             </table>
           </div>
         </div>
@@ -331,7 +419,24 @@
               <small>S&eacute;lectionnez un template import&eacute; depuis l'onglet Templates. <a href="#" onclick="navigateTo('templates');return false;" style="color:var(--primary);">G&eacute;rer les templates</a></small>
             </div>
             <div class="form-group">
-              <label>S&eacute;lectionner les contacts *</label>
+              <label>Source des contacts *</label>
+              <select id="camp-pool" onchange="loadPoolContactsForCampaign(this.value)">
+                <option value="">-- S&eacute;lectionner --</option>
+                <option value="all">Tous les contacts</option>
+              </select>
+              <small>S&eacute;lectionnez un pool ou "Tous les contacts". <a href="#" onclick="navigateTo('pools');return false;" style="color:var(--primary);">G&eacute;rer les pools</a></small>
+            </div>
+            <div class="form-group" id="camp-contacts-section" style="display:none;">
+              <label>S&eacute;lectionner les contacts</label>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="selectAvailableContacts()">Tous les disponibles</button>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <input type="number" id="camp-random-count" placeholder="N" style="width:60px;padding:6px 8px;background:var(--dark);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;" min="1">
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="selectRandomContacts()">Au hasard</button>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="deselectAllCampaignContacts()">D&eacute;s&eacute;lectionner tout</button>
+                <span id="camp-selection-count" style="color:var(--text-muted);font-size:13px;margin-left:auto;">0 s&eacute;lectionn&eacute;(s)</span>
+              </div>
               <div id="camp-contacts" class="contact-check-list"></div>
             </div>
             <button type="submit" class="btn btn-primary" id="btn-create-campaign">Cr&eacute;er la campagne</button>

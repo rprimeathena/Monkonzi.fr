@@ -66,6 +66,22 @@ const initializeDatabase = async () => {
         FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
         FOREIGN KEY (contact_id) REFERENCES contacts(id)
       );
+
+      CREATE TABLE IF NOT EXISTS pools (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS pool_contacts (
+        pool_id INTEGER NOT NULL,
+        contact_id INTEGER NOT NULL,
+        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (pool_id, contact_id),
+        FOREIGN KEY (pool_id) REFERENCES pools(id) ON DELETE CASCADE,
+        FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+      );
     `);
     console.log('✓ Tables de base de données initialisées');
   } finally {

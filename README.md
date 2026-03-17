@@ -95,6 +95,37 @@ Token de vérification: mon_token_secret_123
 
 ---
 
+## 📦 Git & Déploiement
+
+### Repo GitHub
+```
+https://github.com/rprimeathena/Monkonzi.fr
+```
+
+### Commandes Git
+```bash
+# Cloner le projet
+git clone https://github.com/rprimeathena/Monkonzi.fr.git
+
+# Ajouter les modifications
+git add .
+
+# Commit
+git commit -m "description des changements"
+
+# Push vers GitHub
+git push origin main
+
+# Pull les dernières modifications
+git pull origin main
+```
+
+### Déploiement Vercel
+- **URL de production** : [https://monkonzi-v3.vercel.app](https://monkonzi-v3.vercel.app)
+- Le déploiement est automatique à chaque push sur `main`
+
+---
+
 ## 📝 Notes
 
 - Les tokens d'accès Meta expirent après 60 jours

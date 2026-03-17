@@ -405,3 +405,25 @@ tr:hover { background: rgba(255,255,255,0.02); }
 }
 
 .info-box li { margin-bottom: 4px; }
+
+/* Pool progress bar */
+.pool-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--dark);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.pool-progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* Contact check item status */
+.contact-check-item[data-contacted="true"] {
+  opacity: 0.6;
+}
