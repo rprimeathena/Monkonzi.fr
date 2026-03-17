@@ -312,8 +312,11 @@
               <input type="text" id="tpl-phone" placeholder="33612345678" required>
             </div>
             <div class="form-group">
-              <label>Nom du template (tel qu'approuv&eacute; dans Meta)</label>
-              <input type="text" id="tpl-name" placeholder="hello_world" required>
+              <label>Template</label>
+              <select id="tpl-name" required>
+                <option value="">-- S&eacute;lectionnez un template --</option>
+              </select>
+              <small>Seuls les templates import&eacute;s localement apparaissent ici. <a href="#" onclick="navigateTo('templates');return false;" style="color:var(--primary);">Synchroniser depuis Meta</a></small>
             </div>
             <div class="form-group">
               <label>Langue</label>

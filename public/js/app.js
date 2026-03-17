@@ -20,6 +20,7 @@ function loadPageData(page) {
     case 'contacts': loadContacts(); break;
     case 'pools': loadPools(); break;
     case 'templates': loadLocalTemplates(); break;
+    case 'send': loadSendTemplates(); break;
     case 'campaigns': loadCampaigns(); loadTemplatesSelect(); loadPoolsSelect(); break;
     case 'messages': loadMessages(); break;
   }
@@ -405,6 +406,13 @@ document.getElementById('pool-import-csv').addEventListener('change', async (e) 
 // ============================================
 // ENVOI DE MESSAGES
 // ============================================
+async function loadSendTemplates() {
+  const templates = await api('/templates');
+  const select = document.getElementById('tpl-name');
+  select.innerHTML = '<option value="">-- Sélectionnez un template --</option>' +
+    templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+}
+
 document.getElementById('send-text-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-send-text');

@@ -9,6 +9,17 @@ const { pool, getConfig, setConfig, getAllConfig } = require('../db/database');
 
 const upload = multer({ dest: '/tmp' });
 
+// Détecte automatiquement le séparateur CSV (;  ,  tabulation)
+function detectSeparator(filePath) {
+  const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+  const counts = {
+    ';': (firstLine.match(/;/g) || []).length,
+    ',': (firstLine.match(/,/g) || []).length,
+    '\t': (firstLine.match(/\t/g) || []).length,
+  };
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] || ';';
+}
+
 // ============================================
 // CONFIGURATION META
 // ============================================
@@ -148,26 +159,28 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
   let imported = 0;
   let skipped = 0;
 
+  const separator = detectSeparator(req.file.path);
+  const rows = [];
   fs.createReadStream(req.file.path)
-    .pipe(csv({ separator: ';' }))
-    .on('data', async (row) => {
-      const phone = (row.phone || row.telephone || row.numero || row.Phone || Object.values(row)[0] || '').replace(/[\s\-\(\)]/g, '');
-      const name = row.name || row.nom || row.Name || Object.values(row)[1] || '';
-      const tags = row.tags || row.tag || '';
-
-      if (phone) {
-        try {
-          await pool.query(
-            'INSERT INTO contacts (phone, name, tags) VALUES ($1, $2, $3) ON CONFLICT(phone) DO NOTHING',
-            [phone, name, tags]
-          );
-          imported++;
-        } catch {
-          skipped++;
+    .pipe(csv({ separator }))
+    .on('data', (row) => rows.push(row))
+    .on('end', async () => {
+      for (const row of rows) {
+        const phone = (row.phone || row.telephone || row.numero || row.Phone || Object.values(row)[0] || '').replace(/[\s\-\(\)\+]/g, '');
+        const name = row.name || row.nom || row.Name || Object.values(row)[1] || '';
+        const tags = row.tags || row.tag || '';
+        if (phone) {
+          try {
+            await pool.query(
+              'INSERT INTO contacts (phone, name, tags) VALUES ($1, $2, $3) ON CONFLICT(phone) DO NOTHING',
+              [phone, name, tags]
+            );
+            imported++;
+          } catch {
+            skipped++;
+          }
         }
       }
-    })
-    .on('end', () => {
       fs.unlinkSync(req.file.path);
       res.json({ success: true, imported, skipped });
     })
@@ -262,8 +275,9 @@ router.post('/pools/:id/import', upload.single('file'), async (req, res) => {
   let skipped = 0;
   const rows = [];
 
+  const separator = detectSeparator(req.file.path);
   fs.createReadStream(req.file.path)
-    .pipe(csv({ separator: ';' }))
+    .pipe(csv({ separator }))
     .on('data', (row) => rows.push(row))
     .on('end', async () => {
       for (const row of rows) {
