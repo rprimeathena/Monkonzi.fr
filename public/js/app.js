@@ -720,9 +720,23 @@ async function syncMetaTemplates() {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Aucun template trouv\u00e9 sur Meta</td></tr>';
     }
 
-    const approved = templates.filter(t => t.status === 'APPROVED').length;
-    statusEl.innerHTML = `<div class="connection-status connected"><span class="connection-dot"></span> ${templates.length} templates trouv\u00e9s dont ${approved} approuv\u00e9s</div>`;
-    toast(`${templates.length} templates r\u00e9cup\u00e9r\u00e9s depuis Meta`);
+    // Auto-import tous les templates approuvés en DB locale
+    const approved = templates.filter(t => t.status === 'APPROVED');
+    let imported = 0;
+    for (const t of approved) {
+      const bodyComp = (t.components || []).find(c => c.type === 'BODY');
+      const content = bodyComp ? bodyComp.text : '';
+      const vars = bodyComp ? (bodyComp.text.match(/\{\{\d+\}\}/g) || []) : [];
+      const result = await api('/templates/import-meta', {
+        method: 'POST',
+        body: { name: t.name, content, variables: vars, language: t.language }
+      });
+      if (result.success) imported++;
+    }
+    loadLocalTemplates();
+
+    statusEl.innerHTML = `<div class="connection-status connected"><span class="connection-dot"></span> ${templates.length} templates trouv\u00e9s, ${imported} approuv\u00e9s import\u00e9s automatiquement</div>`;
+    toast(`${imported} templates import\u00e9s en local`);
   } catch (err) {
     statusEl.innerHTML = `<div class="connection-status disconnected"><span class="connection-dot"></span> Erreur de connexion \u00e0 Meta</div>`;
     toast('Erreur lors de la synchronisation', 'error');
