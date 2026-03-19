@@ -33,9 +33,40 @@ function toast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.textContent = message;
+
+  // Add icon based on type
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  el.innerHTML = `<span style="font-weight:700;font-size:15px;">${icons[type] || icons.success}</span> ${message}`;
+
   container.appendChild(el);
-  setTimeout(() => el.remove(), 4000);
+  setTimeout(() => {
+    el.classList.add('toast-exit');
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+// ============================================
+// COUNT-UP ANIMATION
+// ============================================
+function animateCountUp(element, target, duration = 800) {
+  const start = parseInt(element.textContent) || 0;
+  if (start === target) return;
+
+  const startTime = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easedProgress = easeOutQuart(progress);
+    const current = Math.round(start + (target - start) * easedProgress);
+    element.textContent = current;
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+  requestAnimationFrame(update);
 }
 
 // ============================================
@@ -60,11 +91,11 @@ async function apiForm(url, formData) {
 // ============================================
 async function loadDashboard() {
   const stats = await api('/stats');
-  document.getElementById('stat-contacts').textContent = stats.totalContacts;
-  document.getElementById('stat-sent').textContent = stats.totalMessages;
-  document.getElementById('stat-received').textContent = stats.totalReceived;
-  document.getElementById('stat-pools').textContent = stats.totalPools || 0;
-  document.getElementById('stat-campaigns').textContent = stats.totalCampaigns;
+  animateCountUp(document.getElementById('stat-contacts'), stats.totalContacts || 0);
+  animateCountUp(document.getElementById('stat-sent'), stats.totalMessages || 0);
+  animateCountUp(document.getElementById('stat-received'), stats.totalReceived || 0);
+  animateCountUp(document.getElementById('stat-pools'), stats.totalPools || 0);
+  animateCountUp(document.getElementById('stat-campaigns'), stats.totalCampaigns || 0);
 
   const tbody = document.getElementById('recent-messages');
   tbody.innerHTML = (stats.recentMessages || []).map(m => `
